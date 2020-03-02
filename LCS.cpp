@@ -1,84 +1,113 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <algorithm>
 using namespace std;
 vector<vector<vector<string>>> subLCS;
-vector<vector<bool>> boolTable;
-vector<string> LCS(string a, string b){
+vector<vector<size_t>> len;
+vector<vector<bool>> trace;
+vector<vector<bool>> trace_same;
+void build_len(const string &s1, const string &s2){
+	len.resize(s1.size()+1);
+	for(auto &i : len)	i.resize(s2.size()+1);
+	for(int i=1; i<=s1.size(); i++){
+		for(int j=1; j<=s2.size(); j++){
+			if(s1[i-1] == s2[j-1])	len[i][j] = len[i-1][j-1]+1;
+			else	len[i][j] = max(len[i-1][j], len[i][j-1]);
+		}
+	}
+}
+void init_trace(const string &s1, const string &s2){
+	trace.resize(s1.size()+1);
+	for(auto &i : trace)	i.resize(s2.size()+1);
+	trace_same.resize(s1.size()+1);
+	for(auto &i : trace_same)	i.resize(s2.size()+1);
+}
+void init_subLCS(const string &s1, const string &s2){
+	subLCS.resize(s1.size()+1);
+	for(auto &i : subLCS)	i.resize(s2.size()+1);
+}
+vector<string> LCS(const string &s1, const string &s2, bool flag){
 	//base case
-	if(a.empty() || b.empty()){
-		subLCS[a.size()][b.size()].push_back("");
-		boolTable[a.size()][b.size()] = true;
-		return subLCS[a.size()][b.size()];
+	if(len[s1.size()][s2.size()] == 0){
+		vector<string> base{""};
+		return base;
 	}
-	//case1
-	if(a.back() == b.back()){	
-		if(boolTable[a.size()-1][b.size()-1] == false){
-			string sub_a = a.substr(0, a.size()-1), sub_b = b.substr(0, b.size()-1);
-			LCS(sub_a, sub_b);
+	if(s1.back() == s2.back()){
+		//cout<<s1.size()<<"\t"<<s2.size()<<endl;
+		if(flag == false){
+			if(trace[s1.size()][s2.size()] == true)
+				return subLCS[s1.size()][s2.size()];
+			vector<string> temp;
+			//
+			if(len[s1.size()][s2.size()] == len[s1.size()-1][s2.size()])
+				temp = LCS(s1.substr(0, s1.size()-1), s2, false);
+			if(len[s1.size()][s2.size()] == len[s1.size()][s2.size()-1]){
+				for(auto i : LCS(s1, s2.substr(0, s2.size()-1), false))
+					temp.push_back(i);
+			}
+			for(auto i : LCS(s1.substr(0, s1.size()-1), s2.substr(0, s2.size()-1), false)){
+				i.push_back(s1.back());
+				temp.push_back(i);
+			}
+			subLCS[s1.size()][s2.size()] = temp;
+			trace[s1.size()][s2.size()] = true;
+			return temp;
 		}
-		for(auto i : subLCS[a.size()-1][b.size()-1]){
-			i.push_back(a.back());
-			subLCS[a.size()][b.size()].push_back(i);
+		else{
+			if(trace_same[s1.size()][s2.size()] == true){
+				vector<string> empty;
+				return empty;
+			}
+			else{
+				vector<string> temp;
+				if(len[s1.size()][s2.size()] == len[s1.size()-1][s2.size()])
+					temp = LCS(s1.substr(0, s1.size()-1), s2, true);
+				if(len[s1.size()][s2.size()] == len[s1.size()][s2.size()-1]){
+					for(auto i : LCS(s1, s2.substr(0, s2.size()-1), true))
+						temp.push_back(i);
+				}
+				for(auto i  : LCS(s1.substr(0, s1.size()-1), s2.substr(0, s2.size()-1), false)){
+					i.push_back(s1.back());
+					temp.push_back(i);
+				}
+				trace_same[s1.size()][s2.size()] = true;
+				//return LCS(s1, s2, false);
+				return temp;
+			}
 		}
-		//cout<<subLCS[a.size()][b.size()].size()<<endl;
-		boolTable[a.size()][b.size()] = true;
-		return subLCS[a.size()][b.size()];
 	}
-	//case2
 	else{
-		if(boolTable[a.size()-1][b.size()] == false){
-			string sub_a = a.substr(0, a.size()-1), sub_b = b.substr(0, b.size());
-			LCS(sub_a, sub_b);
+		//cout<<s1.size()<<"\t"<<s2.size()<<endl;
+		if(len[s1.size()-1][s2.size()] == len[s1.size()][s2.size()-1]){
+			vector<string> temp = LCS(s1.substr(0, s1.size()-1), s2, true);
+			for(auto i : LCS(s1, s2.substr(0, s2.size()-1), true))
+				temp.push_back(i);
+			if(flag == false){
+				for(size_t i = 0; i <= s1.size(); i++)
+					for(size_t j = 0; j <= s2.size(); j++)
+						trace_same[i][j] = 0;
+			}
+			//
+			return temp;
 		}
-		if(boolTable[a.size()][b.size()-1] == false){
-			string sub_a = a.substr(0, a.size()), sub_b = b.substr(0, b.size()-1);
-			LCS(sub_a, sub_b);
-		}
-		if(subLCS[a.size()-1][b.size()][0].size() >= subLCS[a.size()][b.size()-1][0].size()){
-			//cout<<"from leftside"<<endl;
-			for(auto i : subLCS[a.size()-1][b.size()])
-				subLCS[a.size()][b.size()].push_back(i);
-		}
-		if(subLCS[a.size()-1][b.size()][0].size() <= subLCS[a.size()][b.size()-1][0].size()){
-			//cout<<"from upside"<<endl;
-			for(auto i : subLCS[a.size()][b.size()-1])
-				subLCS[a.size()][b.size()].push_back(i);
-		}
-		boolTable[a.size()][b.size()] = true;
-		return subLCS[a.size()][b.size()];
+		else if(len[s1.size()-1][s2.size()] > len[s1.size()][s2.size()-1])
+			return LCS(s1.substr(0, s1.size()-1), s2, flag);
+		else
+			return LCS(s1, s2.substr(0, s2.size()-1), flag);
 	}
 }
-void initialize(string a, string b){
-	//init subLCS
-	subLCS.resize(a.size()+1);
-	for(auto &i : subLCS)
-		i.resize(b.size()+1);
-	//inti boolTable
-	boolTable.resize(a.size()+1);
-	for(auto &i : boolTable)
-		i.resize(b.size()+1);
-}
-int main()
-{
+int main(){
 	string s1, s2;
 	cin>>s1>>s2;
-	cout<<"------------"<<endl;
-	initialize(s1, s2);
-	vector<string> print = LCS(s1, s2);
-	if(print[0] == "")
-		cout<<0<<"\t"<<0<<endl;
-	else{
-		cout<<print[0].size()<<"\t"<<print.size()<<endl;
-		for(auto i : print)
-			cout << i << endl;
-	}
-	//debug
-	
-	/*for(auto i : subLCS){
-		for(auto j : i)
-			cout<<j.size()<<"\t";
-		cout<<"\n";
-	}*/
+	//cout<<"---------------\n";
+	build_len(s1, s2);
+	init_trace(s1, s2);
+	init_subLCS(s1, s2);
+	vector<string> ans = LCS(s1, s2, false);
+	cout<<len[s1.size()][s2.size()]<<" "<<ans.size()<<"\n";
+	sort(ans.begin(), ans.end());
+	for(auto i : ans)
+		cout<<i<<"\n";
 	return 0;
 }
